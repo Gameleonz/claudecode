@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI批量图片生成器</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- 主容器 -->
+    <div class="main-container">
+        <!-- 头部 -->
+        <header class="header">
+            <h1>AI图片生成器</h1>
+            <div class="header-actions">
+                <div class="stats">
+                    <span id="imageCount">已生成: 0 张</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- 内容区域 -->
+        <div class="content-area">
+            <!-- 左侧输入区域 -->
+            <div class="input-panel">
+                <div class="panel-section">
+                    <h3>提示词</h3>
+                    <textarea id="prompt" class="prompt-input" placeholder="描述你想要生成的图片内容...">一只可爱的小猫在花园里玩耍</textarea>
+
+                    <div class="input-group">
+                        <label for="defaultPrompt">默认提示词</label>
+                        <input type="text" id="defaultPrompt" placeholder="设置默认提示词">
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <h3>生成参数</h3>
+
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label for="resolution">分辨率</label>
+                            <select id="resolution">
+                                <option value="1024x1024" data-models="all">1024x1024 (1:1)</option>
+                                <option value="960x1280" data-models="kolors">960x1280 (3:4)</option>
+                                <option value="768x1024" data-models="kolors">768x1024 (3:4)</option>
+                                <option value="720x1440" data-models="kolors">720x1440 (1:2)</option>
+                                <option value="720x1280" data-models="kolors">720x1280 (9:16)</option>
+                                <option value="custom" data-models="all">自定义尺寸</option>
+                            </select>
+                            <small id="resolutionNote"></small>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="quantity">数量</label>
+                            <input type="number" id="quantity" min="1" max="10" value="2">
+                        </div>
+                    </div>
+
+                    <div class="custom-resolution-container" id="customResolutionContainer" style="display: none;">
+                        <div class="panel-section">
+                            <h3>自定义图片尺寸</h3>
+                            <div class="input-row">
+                                <div class="input-group">
+                                    <label for="customWidth">宽度 (px)</label>
+                                    <input type="number" id="customWidth" min="64" max="2048" value="1024" placeholder="64-2048">
+                                </div>
+                                <div class="input-group">
+                                    <label for="customHeight">高度 (px)</label>
+                                    <input type="number" id="customHeight" min="64" max="2048" value="1024" placeholder="64-2048">
+                                </div>
+                            </div>
+                            <div class="preset-sizes">
+                                <label>快速选择：</label>
+                                <div class="preset-buttons">
+                                    <button type="button" class="preset-btn" data-width="512" data-height="512">512×512</button>
+                                    <button type="button" class="preset-btn" data-width="768" data-height="768">768×768</button>
+                                    <button type="button" class="preset-btn" data-width="1024" data-height="1024">1024×1024</button>
+                                    <button type="button" class="preset-btn" data-width="1280" data-height="720">1280×720</button>
+                                    <button type="button" class="preset-btn" data-width="720" data-height="1280">720×1280</button>
+                                    <button type="button" class="preset-btn" data-width="1920" data-height="1080">1920×1080</button>
+                                    <button type="button" class="preset-btn" data-width="1080" data-height="1920">1080×1920</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="batchSize">批量处理</label>
+                        <input type="number" id="batchSize" min="1" max="50" value="10">
+                        <small>一次批量处理的最大图片数量</small>
+                    </div>
+                </div>
+
+                <button id="generateImages" class="generate-btn">
+                    <span class="btn-icon">🎨</span>
+                    <span>生成图片</span>
+                </button>
+
+                <!-- 进度条 -->
+                <div id="progressContainer" class="progress-container" style="display: none;">
+                    <div class="progress-bar">
+                        <div id="progressBar" class="progress-fill"></div>
+                    </div>
+                    <div id="progressText">0%</div>
+                </div>
+            </div>
+
+            <!-- 右侧图片展示区域 -->
+            <div class="display-panel">
+                <div class="panel-header">
+                    <h3>生成结果</h3>
+                    <div class="panel-actions">
+                        <button id="selectAll" class="action-btn" style="display: none;">全选</button>
+                        <button id="downloadSelected" class="action-btn" style="display: none;">下载选中</button>
+                        <button id="downloadAll" class="action-btn" style="display: none;">下载全部</button>
+                        <button id="clearResults" class="action-btn" style="display: none;">清空</button>
+                    </div>
+                </div>
+
+                <div id="resultsContainer" class="results-container">
+                    <div class="empty-state">
+                        <div class="empty-icon">🖼️</div>
+                        <p>还没有生成图片</p>
+                        <p class="empty-subtitle">在左侧输入提示词并点击生成按钮开始创作</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 浮动设置按钮 -->
+    <div id="settingsFab" class="fab">
+        <span class="fab-icon">⚙️</span>
+    </div>
+
+    <!-- 设置面板 -->
+    <div id="settingsPanel" class="settings-panel">
+        <div class="settings-header">
+            <h3>API设置</h3>
+            <button id="minimizeSettings" class="minimize-btn">−</button>
+        </div>
+
+        <div class="settings-content">
+            <div class="settings-group">
+                <label for="apiUrl">API地址</label>
+                <input type="text" id="apiUrl" value="https://api.siliconflow.cn/v1/images/generations">
+            </div>
+
+            <div class="settings-group">
+                <label for="apiKey">API Key</label>
+                <div class="api-key-container">
+                    <input type="password" id="apiKey" placeholder="请输入您的API Key">
+                    <button type="button" id="toggleApiKey" class="toggle-api-key-btn">👁️</button>
+                </div>
+            </div>
+
+            <div class="settings-group">
+                <label for="modelSelect">模型选择</label>
+                <select id="modelSelect">
+                    <option value="Kwai-Kolors/Kolors" selected>Kwai-Kolors/Kolors</option>
+                    <option value="dall-e-3">DALL-E 3</option>
+                    <option value="dall-e-2">DALL-E 2</option>
+                    <option value="stable-diffusion">Stable Diffusion</option>
+                    <option value="midjourney">Midjourney</option>
+                    <option value="custom">自定义模型</option>
+                </select>
+            </div>
+
+            <div class="settings-group" id="customModelGroup" style="display: none;">
+                <label for="customModel">自定义模型</label>
+                <input type="text" id="customModel" placeholder="输入自定义模型名称">
+            </div>
+
+            <button id="saveSettings" class="save-btn">保存设置</button>
+        </div>
+    </div>
+
+    <!-- 图片预览模态框 -->
+    <div id="imageModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div class="modal-image-container">
+                <img id="modalImage" src="" alt="图片预览">
+                <div class="modal-info">
+                    <h3 id="modalTitle">图片预览</h3>
+                    <p id="modalPrompt"></p>
+                    <p id="modalResolution"></p>
+                    <p id="modalTime"></p>
+                    <div class="modal-actions">
+                        <button id="modalDownload" class="btn btn-primary">下载图片</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 消息提示 -->
+    <div id="messageContainer" class="message-container"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
